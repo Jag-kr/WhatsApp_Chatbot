@@ -8,6 +8,6 @@ DOCUMENT_PATH = "attached_assets/FindMySchool Data.txt"
 
 # Logging Configuration
 logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)

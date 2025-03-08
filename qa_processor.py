@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple, List, Dict, Optional
+from typing import Tuple, List
 from functools import lru_cache
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 # Try to import sentence transformers for better semantic matching
 try:
     from sentence_transformers import SentenceTransformer
-
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
@@ -40,7 +39,6 @@ class QAProcessor:
         self.high_confidence_threshold = high_confidence_threshold
         self.max_chunks = max_chunks
 
-        # Set up vectorizer based on availability and preference
         self.use_sentence_transformers = (
             use_sentence_transformers and SENTENCE_TRANSFORMERS_AVAILABLE
         )
@@ -50,9 +48,7 @@ class QAProcessor:
             self.vectorizer = None
         else:
             self.vectorizer = TfidfVectorizer(
-                min_df=1,
-                stop_words="english",
-                ngram_range=(1, 3),  # Include trigrams for better matching
+                min_df=1, stop_words="english", ngram_range=(1, 3)
             )
             self.model = None
 
@@ -62,10 +58,8 @@ class QAProcessor:
 
     def _create_chunks(self, text: str) -> List[str]:
         """Create semantically meaningful chunks from text"""
-        # First try to split by double newlines (paragraphs)
         chunks = [chunk.strip() for chunk in text.split("\n\n") if chunk.strip()]
-
-        # Process very large chunks further using the chunk_text utility
+        
         result_chunks = []
         for chunk in chunks:
             if len(chunk) > CHUNK_SIZE:
@@ -87,13 +81,11 @@ class QAProcessor:
             if not text:
                 raise ValueError("Document is empty")
 
-            # Create semantically meaningful chunks
             self.texts = self._create_chunks(text)
 
             if not self.texts:
                 raise ValueError("No text chunks created")
 
-            # Create vector representations
             if self.use_sentence_transformers:
                 self.doc_vectors = self.model.encode(self.texts)
             else:
@@ -125,33 +117,22 @@ class QAProcessor:
         try:
             if self.use_sentence_transformers:
                 query_vector = self.model.encode([query])
-                similarities = cosine_similarity([query_vector], self.doc_vectors)[0]
+                similarities = cosine_similarity(query_vector, self.doc_vectors)[0]
             else:
                 query_vector = self.vectorizer.transform([query])
                 similarities = cosine_similarity(query_vector, self.doc_vectors)[0]
 
-            # Get top matches
-            top_indices = similarities.argsort()[-self.max_chunks :][::-1]
+            top_indices = similarities.argsort()[-self.max_chunks:][::-1]
             best_match_idx = top_indices[0]
             similarity_score = similarities[best_match_idx]
 
-            # If similarity is very low, return the default message
             if similarity_score < self.low_confidence_threshold:
-                return (
-                    "I'm sorry, but I couldn't find a relevant answer to your question. Could you please rephrase it?",
-                    0.0,
-                )
+                return "I'm sorry, but I couldn't find a relevant answer. Could you please rephrase?", 0.0
 
-            # If we have a high confidence match, return the most relevant chunk
             if similarity_score >= self.high_confidence_threshold:
                 return self.texts[best_match_idx], similarity_score
 
-            # For medium confidence, combine relevant chunks
-            relevant_indices = [
-                idx
-                for idx in top_indices
-                if similarities[idx] > self.low_confidence_threshold
-            ]
+            relevant_indices = [idx for idx in top_indices if similarities[idx] > self.low_confidence_threshold]
             response = "\n\n".join([self.texts[idx] for idx in relevant_indices])
             return response, similarity_score
 

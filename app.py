@@ -6,24 +6,19 @@ from qa_processor import QAProcessor
 from config import DOCUMENT_PATH, MAX_WHATSAPP_MESSAGE_LENGTH
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env file if available
 load_dotenv()
 
 # Logging configuration
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Flask app setup
 app = Flask(__name__)
-app.secret_key = os.getenv(
-    "SESSION_SECRET", "default_secret_key"
-)  # Fallback for safety
+app.secret_key = os.getenv("SESSION_SECRET", "default_secret_key")  # Fallback for safety
 
 # Initialize QA Processor
 qa_processor = QAProcessor(DOCUMENT_PATH)
-
 
 def process_whatsapp_message(message):
     """Process incoming WhatsApp messages and return a response."""
@@ -48,12 +43,10 @@ def process_whatsapp_message(message):
         else answer
     )
 
-
 @app.route("/")
 def index():
     """Render the main page."""
     return render_template("index.html")
-
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
@@ -73,12 +66,10 @@ def whatsapp_reply():
         resp.message("I apologize, but I encountered an error processing your message.")
         return str(resp)
 
-
 @app.errorhandler(405)
 def method_not_allowed(e):
     """Handle method not allowed errors."""
     return "Method Not Allowed", 405
 
-
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
