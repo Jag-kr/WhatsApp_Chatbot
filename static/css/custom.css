@@ -1,0 +1,18 @@
+/* Custom styles to complement Bootstrap dark theme */
+.card {
+    border-radius: 15px;
+    border: 1px solid var(--bs-border-color);
+}
+
+.alert {
+    border-radius: 10px;
+}
+
+.list-group-item {
+    background-color: var(--bs-dark);
+    border-color: var(--bs-border-color);
+}
+
+.container {
+    max-width: 960px;
+}
