@@ -7,6 +7,7 @@ from utils import chunk_text, load_document
 
 logger = logging.getLogger(__name__)
 
+
 class QAProcessor:
     def __init__(self, document_path: str):
         """
@@ -16,8 +17,9 @@ class QAProcessor:
             document_path (str): Path to the document file
         """
         self.vectorizer = TfidfVectorizer(
-            min_df=1,  # Include terms that appear in at least 1 document
-            stop_words='english'  # Remove common English stop words
+            min_df=1,
+            stop_words="english",
+            ngram_range=(1, 2),  # Include bigrams for better matching
         )
         self.texts = []
         self.doc_vectors = None
@@ -35,7 +37,11 @@ class QAProcessor:
             if not text:
                 raise ValueError("Document is empty")
 
-            self.texts = chunk_text(text, CHUNK_SIZE)
+            # Split text at natural boundaries (double newlines)
+            self.texts = [
+                chunk.strip() for chunk in text.split("\n\n") if chunk.strip()
+            ]
+
             if not self.texts:
                 raise ValueError("No text chunks created")
 
@@ -43,8 +49,9 @@ class QAProcessor:
             logger.info("QA Processor initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing QA processor: {str(e)}")
-            # Initialize with a default response if document loading fails
-            self.texts = ["I apologize, but I'm currently unable to access the school information. Please try again later."]
+            self.texts = [
+                "I apologize, but I'm currently unable to access the information. Please try again later."
+            ]
             self.doc_vectors = self.vectorizer.fit_transform(self.texts)
 
     def get_response(self, query: str) -> Tuple[str, float]:
@@ -60,10 +67,29 @@ class QAProcessor:
         try:
             query_vector = self.vectorizer.transform([query])
             similarities = cosine_similarity(query_vector, self.doc_vectors)
-            best_match_idx = similarities.argmax()
+
+            # Get top 2 matches
+            top_indices = similarities[0].argsort()[-2:][::-1]
+            best_match_idx = top_indices[0]
             similarity_score = similarities[0][best_match_idx]
 
-            return self.texts[best_match_idx], similarity_score
+            # If similarity is very low, return the default message
+            if similarity_score < 0.1:
+                return (
+                    "I'm sorry, but I couldn't find a relevant answer to your question. Could you please rephrase it?",
+                    0.0,
+                )
+
+            # If we have a good match, return the most relevant chunk
+            if similarity_score >= 0.3:
+                return self.texts[best_match_idx], similarity_score
+
+            # For medium confidence, combine relevant chunks
+            response = "\n\n".join(
+                [self.texts[idx] for idx in top_indices if similarities[0][idx] > 0.1]
+            )
+            return response, similarity_score
+
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}")
             return "I apologize, but I couldn't process your query at this time.", 0.0
