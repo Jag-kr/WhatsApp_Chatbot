@@ -65,6 +65,35 @@ def whatsapp_reply():
         resp.message("I apologize, but I encountered an error processing your message.")
         return str(resp)
 
+@app.route("/vonage", methods=["POST"])
+def vonage_reply():
+    """Handle incoming messages from Vonage."""
+    try:
+        data = request.get_json()
+
+        if not data or "message" not in data:
+            abort(400, "Invalid request payload")
+
+        incoming_msg = data.get("message", {}).get("content", {}).get("text", "").strip()
+        response_text = process_whatsapp_message(incoming_msg)
+
+        # Construct Vonage response format
+        response_data = {
+            "message": {
+                "content": {
+                    "type": "text",
+                    "text": response_text
+                }
+            }
+        }
+
+        return response_data, 200
+
+    except Exception as e:
+        logger.error(f"Error processing Vonage message: {e}")
+        return {"error": "An error occurred while processing the message"}, 500
+
+
 @app.errorhandler(405)
 def method_not_allowed(e):
     """Handle method not allowed errors."""
