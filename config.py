@@ -3,7 +3,7 @@ import logging
 
 # Application Configuration
 CHUNK_SIZE = 1000
-MAX_WHATSAPP_MESSAGE_LENGTH = 1600
+MAX_WHATSAPP_MESSAGE_LENGTH = 1550
 DOCUMENT_PATH = "attached_assets/FindMySchool Data.txt"
 
 # Logging Configuration
