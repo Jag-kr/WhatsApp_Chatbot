@@ -37,11 +37,10 @@ def process_whatsapp_message(message):
     if confidence < 0.1:
         return "I'm sorry, but I couldn't find a relevant answer. Could you please rephrase it?"
 
-    return (
-        answer[: MAX_WHATSAPP_MESSAGE_LENGTH - 3] + "..."
-        if len(answer) > MAX_WHATSAPP_MESSAGE_LENGTH
-        else answer
-    )
+    if len(answer) > MAX_WHATSAPP_MESSAGE_LENGTH:
+        answer = answer[:MAX_WHATSAPP_MESSAGE_LENGTH].rsplit(" ", 1)[0] + "..."
+
+    return answer
 
 @app.route("/")
 def index():
