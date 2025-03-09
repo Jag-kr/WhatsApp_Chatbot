@@ -69,28 +69,40 @@ def whatsapp_reply():
 def vonage_reply():
     """Handle incoming messages from Vonage."""
     try:
-        data = request.get_json()
-
+        data = request.get_json(force=True)  # Force JSON parsing even if wrong Content-Type
+        
+        # Validate payload structure
         if not data or "message" not in data:
+            logger.warning("Invalid payload structure: %s", data)
             abort(400, "Invalid request payload")
 
-        incoming_msg = data.get("message", {}).get("content", {}).get("text", "").strip()
+        message = data["message"]
+        content = message.get("content", {})
+        
+        # Handle different message types
+        if content.get("type") != "text":
+            return {"status": "ignored"}, 200
+
+        incoming_msg = content.get("text", "").strip()
+        sender_number = message.get("from")
+        
+        # Process message
         response_text = process_whatsapp_message(incoming_msg)
 
-        # Construct Vonage response format
-        response_data = {
+        # Construct PROPER Vonage response format
+        return {
             "message": {
                 "content": {
                     "type": "text",
                     "text": response_text
-                }
+                },
+                "to": sender_number,  # Important for routing reply
+                "from": message.get("to")  # Original recipient becomes sender
             }
-        }
-
-        return response_data, 200
+        }, 200
 
     except Exception as e:
-        logger.error(f"Error processing Vonage message: {e}")
+        logger.error(f"Error processing Vonage message: {str(e)}", exc_info=True)
         return {"error": "An error occurred while processing the message"}, 500
 
 
